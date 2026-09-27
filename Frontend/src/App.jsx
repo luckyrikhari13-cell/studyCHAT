@@ -2,7 +2,7 @@ import "./App.css";
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react'
 function App() {
   return (
-    <div>
+    <div>  
       <h1>My App</h1>
 
       <header>
