@@ -8,9 +8,10 @@ import cors from "cors";
 import { connectDB } from "./lib/db.js";
 import { clerkMiddleware } from "@clerk/express";
 import User from "./models/user.model.js";
+import job from "./lib/cron.js";
 dotenv.config();
 const app = express();
-const port = process.env.PORT || 4000 ;
+const port = process.env.PORT || 4000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const publicDir = path.join(process.cwd(), "public");
@@ -38,4 +39,8 @@ if (fs.existsSync(publicDir)) {
 app.listen(port, () => {
   connectDB();
   console.log("Server is running on Port ", port);
+
+  if (process.env.NODE_ENV === "production") {
+    job.start();
+  }
 });
