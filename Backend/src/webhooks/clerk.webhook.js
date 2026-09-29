@@ -11,20 +11,20 @@ router.post("/", async (req, res) => {
       res.status(503).json({ message: "Webhook secret is not provided" });
       return;
     }
-    console.log("WEBHOOK VERIFIED:", evt.type);
-    console.log("CLERK USER ID:", evt.data.id);
     // clerk's verifier expects a Web Request with the raw body; express.raw gives a Buffer.
     const payload = Buffer.isBuffer(req.body)
-      ? req.body.toString("utf8")
-      : String(req.body);
+    ? req.body.toString("utf8")
+    : String(req.body);
     const request = new Request("http://internal/webhooks/clerk", {
       method: "POST",
       headers: new Headers(req.headers),
       body: payload,
     });
-
+    
     // throws if the signature is wrong or the body was tampered with; only then do we trust evt.
     const evt = await verifyWebhook(request, { signingSecret });
+    console.log("WEBHOOK VERIFIED:", evt.type);
+    console.log("CLERK USER ID:", evt.data.id);
 
     if (evt.type === "user.created" || evt.type === "user.updated") {
       const u = evt.data;
