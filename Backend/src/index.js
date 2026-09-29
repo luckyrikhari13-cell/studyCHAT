@@ -6,7 +6,7 @@ import cors from "cors";
 import { connectDB } from "./lib/db.js";
 import { clerkMiddleware } from "@clerk/express";
 import User from "./models/user.model.js";
-import clerkwebhook from "../src/webhooks/clerk.webhook.js"
+import clerkwebhook from "./webhooks/clerk.webhook.js"
 import job from "./lib/cron.js";
 dotenv.config();
 const app = express();
