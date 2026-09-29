@@ -6,6 +6,7 @@ import cors from "cors";
 import { connectDB } from "./lib/db.js";
 import { clerkMiddleware } from "@clerk/express";
 import User from "./models/user.model.js";
+import clerkwebhook from "../src/webhooks/clerk.webhook.js"
 import job from "./lib/cron.js";
 dotenv.config();
 const app = express();
@@ -21,23 +22,26 @@ app.get("/health", (req, res) => {
   });
 });
 
-
 //if the public  directory exists serve the static files
 // this is for the production build
 
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
-  
+
   app.get("/{*any}", (req, res, next) => {
     res.sendFile(path.join(publicDir, "index.html"), (err) => next(err));
   });
 }
-
+app.use(
+  "/api/webhooks/clerk",
+  express.raw({ type: "application/json" }),
+  clerkwebhook,
+);
 app.listen(port, "0.0.0.0", () => {
   connectDB();
-  
+
   console.log(`Server is running on 0.0.0.0:${port}`);
-  
+
   if (process.env.NODE_ENV === "production") {
     job.start();
   }
