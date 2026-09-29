@@ -10,7 +10,7 @@ import { clerkMiddleware } from "@clerk/express";
 import User from "./models/user.model.js";
 dotenv.config();
 const app = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 4000 ;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const publicDir = path.join(process.cwd(), "public");
