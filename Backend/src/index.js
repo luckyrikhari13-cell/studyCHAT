@@ -9,7 +9,7 @@ import User from "./models/user.model.js";
 import job from "./lib/cron.js";
 dotenv.config();
 const app = express();
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const publicDir = path.join(process.cwd(), "public");
