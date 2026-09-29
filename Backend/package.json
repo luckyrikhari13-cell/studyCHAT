@@ -4,15 +4,16 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "dev":" nodemon src/index.js",
-    "build":" rm -rf dist && cp -R src dist",
-    "start":"node src/index.js"
+    "dev": " nodemon src/index.js",
+    "build": " rm -rf dist && cp -R src dist",
+    "start": "node src/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@clerk/express": "^2.1.72",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
