@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+ 
 export async function connectDB() {
   try {
     const mongouri = process.env.MONGO_URI;
