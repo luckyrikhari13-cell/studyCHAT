@@ -20,7 +20,6 @@ app.get("/health", (req, res) => {
     ok: true,
   });
 });
-app.use(clerkMiddleware);
 
 
 //if the public  directory exists serve the static files
@@ -28,7 +27,7 @@ app.use(clerkMiddleware);
 
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
-
+  
   app.get("/{*any}", (req, res, next) => {
     res.sendFile(path.join(publicDir, "index.html"), (err) => next(err));
   });
@@ -36,10 +35,11 @@ if (fs.existsSync(publicDir)) {
 
 app.listen(port, "0.0.0.0", () => {
   connectDB();
-
+  
   console.log(`Server is running on 0.0.0.0:${port}`);
-
+  
   if (process.env.NODE_ENV === "production") {
     job.start();
   }
 });
+app.use(clerkMiddleware);
