@@ -1,5 +1,7 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
+import { hasImagekitConfig, uploadChatMedia } from "../lib/imagekit.js";
+
 export async function getUsersForSidebar(req, res) {
   try {
     const loggedInUserId = req.user._id;
@@ -65,16 +67,67 @@ export async function getConversationsForSidebar(req, res) {
   }
 }
 
+export async function getMessages(req, res) {
+  try {
+    const { id: userToChatId } = req.params;
 
-export async function getMessages(req,res){
-try {
-    
-    
-} catch (error) {
-    
+    const myId = req.user._id;
+
+    const messages = await Message.find({
+      $or: [
+        { senderId: myId, recieverId: userToChatId },
+        { senderId: userToChatId, receiverId: myId },
+      ],
+    }).sort({ createdAt: 1 });
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.log("Error in getMessages:", error.message);
+    res.status(500).json({
+      message: "internal server error",
+    });
+  }
 }
-} 
 
+export async function sendMessage(req, res) {
+  try {
+    const { text } = req.body;
+    const { id: recieverId } = req.params;
+    const senderId = req.user._id;
+
+    let imageUrl;
+    let videoUrl;
+
+    if (req.file) {
+      if (!hasImagekitConfig) {
+        return res.status(500).json({
+          message: "Media upload is not configured",
+        });
+      }
+    }
+
+    const url = await uploadChatMedia(req.file);
+    if (req.file.mimetype.startsWith("video/")) videoUrl = url;
+    else imageUrl = url;
+
+    const newMessage = new Message({
+      senderId,
+      recieverId,
+      text,
+      image: imageUrl,
+      video: videoUrl,
+    });
+
+    await newMessage.save();
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.log("Error in sendMessage:", error.message);
+    res.status(500).json({
+      message: "Internal Server error",
+    });
+  }
+}
 
 // Chat Sidebar Aggregation
 // $match → $group → $sort → $lookup → $replaceRoot → $project
