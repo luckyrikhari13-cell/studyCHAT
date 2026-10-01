@@ -10,8 +10,9 @@ import clerkwebhook from "./webhooks/clerk.webhook.js";
 import authRoutes from "./routes/auth.route.js"
 import job from "./lib/cron.js";
 import messageRoutes from "./routes/message.route.js"
+import { app , server } from "./lib/socket.js";
+import { overwriteMiddlewareResult } from "mongoose";
 dotenv.config();
-const app = express();
 const port = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -42,7 +43,7 @@ app.use(
   express.raw({ type: "application/json" }),
   clerkwebhook,
 );
-app.listen(port, "0.0.0.0", () => {
+server.listen(port, "0.0.0.0", () => {
   connectDB();
 
   console.log(`Server is running on 0.0.0.0:${port}`);
@@ -52,3 +53,11 @@ app.listen(port, "0.0.0.0", () => {
   }
 });
 app.use(clerkMiddleware);
+
+
+// basic ideology of why server for listen and app for routes and overwriteMiddlewareResult
+// app.use(...)       // "Express, use this."
+// app.get(...)       // "Express, handle this route."
+// app.use(...)       // "Express, use these routes."
+
+// server.listen(...) // "Actual server, START."
