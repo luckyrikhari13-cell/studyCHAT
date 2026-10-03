@@ -15,9 +15,8 @@ import { overwriteMiddlewareResult } from "mongoose";
 dotenv.config();
 const port = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
-
+app.use(clerkMiddleware())
 const publicDir = path.join(process.cwd(), "public");
-app.use(express.json());
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -43,6 +42,8 @@ app.use(
   express.raw({ type: "application/json" }),
   clerkwebhook,
 );
+
+app.use(express.json());
 server.listen(port, "0.0.0.0", () => {
   connectDB();
 
@@ -52,7 +53,7 @@ server.listen(port, "0.0.0.0", () => {
     job.start();
   }
 });
-app.use(clerkMiddleware);
+
 
 
 // basic ideology of why server for listen and app for routes and overwriteMiddlewareResult

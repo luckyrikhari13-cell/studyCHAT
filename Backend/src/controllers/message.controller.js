@@ -60,6 +60,7 @@ export async function getConversationsForSidebar(req, res) {
       // 6. Hide the private clerkId field from the result.
       { $project: { clerkId: 0 } },
     ]);
+     res.status(200).json(conversations);
   } catch (error) {
     console.error("Error in getConversationForSidebar", error.message);
     res.status(500).json({
@@ -76,7 +77,7 @@ export async function getMessages(req, res) {
 
     const messages = await Message.find({
       $or: [
-        { senderId: myId, recieverId: userToChatId },
+        { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
     }).sort({ createdAt: 1 });
@@ -93,27 +94,27 @@ export async function getMessages(req, res) {
 export async function sendMessage(req, res) {
   try {
     const { text } = req.body;
-    const { id: recieverId } = req.params;
+    const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
     let imageUrl;
     let videoUrl;
 
     if (req.file) {
-      if (!hasImagekitConfig) {
+      if (!hasImagekitConfig()) {
         return res.status(500).json({
           message: "Media upload is not configured",
         });
       }
-    }
+    
 
     const url = await uploadChatMedia(req.file);
     if (req.file.mimetype.startsWith("video/")) videoUrl = url;
     else imageUrl = url;
-
+    }
     const newMessage = new Message({
       senderId,
-      recieverId,
+      receiverId,
       text,
       image: imageUrl,
       video: videoUrl,
@@ -121,7 +122,7 @@ export async function sendMessage(req, res) {
 
     await newMessage.save();
 
-    const receiverSocketId = getReceiverSocketId(recieverId);
+    const receiverSocketId = getReceiverSocketId(receiverId);
     // only send the message in realtime if user is online
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
