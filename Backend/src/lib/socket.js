@@ -19,7 +19,9 @@ const userSocketMap = {};
 io.on("connection" , (socket)=>{
     const userId = socket.handshake.query.userId;
 
-    if(userId) userSocketMap[userId]=socket.id
+   if (userId && userSocketMap[userId] === socket.id) {
+    delete userSocketMap[userId];
+}
 
     // io.emit() sends events to everyone 
     io.emit("getOnlineUsers",Object.keys(userSocketMap))
