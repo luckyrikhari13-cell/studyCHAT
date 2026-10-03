@@ -1,7 +1,8 @@
+import mongoose from "mongoose";
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import { hasImagekitConfig, uploadChatMedia } from "../lib/imagekit.js";
-import { getReceiverSocketId, io } from "../lib/socket.js";
+import { getReceiverSocketIds, io } from "../lib/socket.js";
 
 export async function getUsersForSidebar(req, res) {
   try {
@@ -55,6 +56,8 @@ export async function getConversationsForSidebar(req, res) {
           as: "user",
         },
       },
+      // 4b. Skip partners whose account was deleted (empty array would crash $replaceRoot).
+      { $match: { user: { $ne: [] } } },
       // 5. Pull that profile out of the array and make it the document.
       { $replaceRoot: { newRoot: { $first: "$user" } } },
       // 6. Hide the private clerkId field from the result.
@@ -72,6 +75,10 @@ export async function getConversationsForSidebar(req, res) {
 export async function getMessages(req, res) {
   try {
     const { id: userToChatId } = req.params;
+
+    if (!mongoose.isValidObjectId(userToChatId)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
 
     const myId = req.user._id;
 
@@ -93,9 +100,26 @@ export async function getMessages(req, res) {
 
 export async function sendMessage(req, res) {
   try {
-    const { text } = req.body;
+    const text = req.body?.text?.trim();
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
+
+    if (!mongoose.isValidObjectId(receiverId)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
+    if (String(receiverId) === String(senderId)) {
+      return res.status(400).json({ message: "You cannot message yourself" });
+    }
+
+    if (!text && !req.file) {
+      return res.status(400).json({ message: "Message cannot be empty" });
+    }
+
+    const receiverExists = await User.exists({ _id: receiverId });
+    if (!receiverExists) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     let imageUrl;
     let videoUrl;
@@ -106,12 +130,12 @@ export async function sendMessage(req, res) {
           message: "Media upload is not configured",
         });
       }
-    
 
-    const url = await uploadChatMedia(req.file);
-    if (req.file.mimetype.startsWith("video/")) videoUrl = url;
-    else imageUrl = url;
+      const url = await uploadChatMedia(req.file);
+      if (req.file.mimetype.startsWith("video/")) videoUrl = url;
+      else imageUrl = url;
     }
+
     const newMessage = new Message({
       senderId,
       receiverId,
@@ -122,10 +146,10 @@ export async function sendMessage(req, res) {
 
     await newMessage.save();
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    // only send the message in realtime if user is online
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
+    // only send in realtime if the user is online (on any of their tabs/devices)
+    const receiverSocketIds = getReceiverSocketIds(receiverId);
+    if (receiverSocketIds.length > 0) {
+      io.to(receiverSocketIds).emit("newMessage", newMessage);
     }
 
     res.status(201).json(newMessage);

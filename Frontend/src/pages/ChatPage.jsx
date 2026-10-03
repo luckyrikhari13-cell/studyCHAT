@@ -1,5 +1,6 @@
 import { useWallpaper } from "../context/wallpaper";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 import { useSelectedConversation } from "../hooks/useSelectedConversation";
 import { useEffect } from "react";
 import ChatSidebar from "../components/chat/ChatSidebar";
@@ -18,10 +19,24 @@ function ChatPage() {
 
   const { activeConversation, activeConversationId, isLargeScreen } = useSelectedConversation();
 
+  const users = useChatStore((state) => state.users);
+  const onlineUsers = useAuthStore((state) => state.onlineUsers);
+  const authUserId = useAuthStore((state) => state.authUser?._id);
+
+  // Someone who signed up after this page loaded shows up as "online" but isn't in our list yet.
+  // Refetch the users when that happens, so new users appear without a manual refresh.
+  const unknownOnlineIds = onlineUsers
+    .filter((id) => id !== authUserId && !users.some((user) => user._id === id))
+    .join(",");
+
   useEffect(() => {
     getUsers();
     getConversations();
   }, [getConversations, getUsers]);
+
+  useEffect(() => {
+    if (unknownOnlineIds) getUsers();
+  }, [unknownOnlineIds, getUsers]);
 
   useEffect(() => {
     if (!activeConversationId) return;

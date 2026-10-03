@@ -1,49 +1,64 @@
-import {create} from "zustand";
+import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
-import {  io } from "socket.io-client"
-const BASE_URL= import.meta.env.MODE === "development" ? "http://localhost:3000" : "/";
+import { io } from "socket.io-client";
 
-export const useAuthStore = create((set , get) => ({
-    authUser : null,
-    isCheckingAuth : true,
-    onlineUsers:[],
-    socket:null,
+const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:3000" : "/";
 
-    checkAuth : async()=>{
-        set({ isCheckingAuth : true})
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-        try {
-            const res = await axiosInstance.get("/auth/check");
-            set({authUser:res.data});
-            get().connectSocket(res.data);
-        } catch (error) {
-            console.log("Error in checkAuth " , error);
-            set({authUser:null});
-        }finally{
-            set({isCheckingAuth:false})
+export const useAuthStore = create((set, get) => ({
+  authUser: null,
+  isCheckingAuth: true,
+  onlineUsers: [],
+  socket: null,
+
+  checkAuth: async () => {
+    set({ isCheckingAuth: true });
+
+    // Right after sign-up the Clerk webhook may not have saved the user yet
+    // (backend answers 404). Retry a few times before giving up.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const res = await axiosInstance.get("/auth/check");
+        set({ authUser: res.data });
+        get().connectSocket(res.data);
+        break;
+      } catch (error) {
+        const notSyncedYet = error.response?.status === 404;
+        if (notSyncedYet && attempt < 3) {
+          await sleep(1500);
+          continue;
         }
+        console.log("Error in checkAuth ", error);
+        set({ authUser: null });
+        break;
+      }
     }
-,
-    clearAuth:()=>{
-        set({ authUser : null , isCheckingAuth : false , onlineUsers : []})
-        get().disconnectSocket();
-    }
-,
-    connectSocket : (user)=>{
-        if(!user || get().socket?.connected) return
 
-        const socket = io(BASE_URL , {query:{userId:user._id}})
+    set({ isCheckingAuth: false });
+  },
 
-        set({socket})
+  clearAuth: () => {
+    set({ authUser: null, isCheckingAuth: false, onlineUsers: [] });
+    get().disconnectSocket();
+  },
 
-        socket.on("getOnlineUsers" , (userIds)=>{
-            set({onlineUsers : userIds})
-        })
+  connectSocket: (user) => {
+    // check "socket exists" (not "connected"), otherwise a second call made
+    // while the first socket is still connecting opens a duplicate socket
+    if (!user || get().socket) return;
 
-    },
-     disconnectSocket: () => {
-    const socket = get().socket;
-    if (socket?.connected) socket.disconnect();
+    const socket = io(BASE_URL, { query: { userId: user._id } });
+
+    set({ socket });
+
+    socket.on("getOnlineUsers", (userIds) => {
+      set({ onlineUsers: userIds });
+    });
+  },
+
+  disconnectSocket: () => {
+    get().socket?.disconnect();
     set({ socket: null });
   },
 }));

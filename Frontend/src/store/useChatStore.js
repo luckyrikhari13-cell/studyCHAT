@@ -35,6 +35,7 @@ export const useChatStore = create(
           }));
         } catch (error) {
           console.log("Error in get Users", error.message);
+          toast.error(error.response?.data?.message || "Failed to load users");
         } finally {
           set({ isUsersLoading: false });
         }
@@ -57,6 +58,8 @@ export const useChatStore = create(
         set({ isMessagesLoading: true });
         try {
           const res = await axiosInstance.get(`/messages/${userId}`);
+          // user already switched to another chat while this loaded -> ignore old result
+          if (get().activeConversationId !== userId) return;
           set({ messages: res.data });
         } catch (error) {
           toast.error(error.response?.data?.message || "Failed to load messages");
@@ -66,12 +69,20 @@ export const useChatStore = create(
       },
 
       sendMessage: async (messageData) => {
-        const { selectedUser, messages } = get();
+        const { selectedUser } = get();
         if (!selectedUser) return false;
 
         try {
           const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-          set({ messages: [...messages, res.data], composerText: "" });
+          // functional update: use the latest messages, not a copy from before the upload
+          // (otherwise a message that arrived meanwhile would be lost)
+          set((state) => ({
+            messages:
+              state.activeConversationId === selectedUser._id
+                ? [...state.messages, res.data]
+                : state.messages,
+            composerText: "",
+          }));
           get().getConversations();
           return true;
         } catch (error) {
@@ -91,7 +102,7 @@ export const useChatStore = create(
           // if im not the receiver don't do anything just return
           if (String(newMessage.senderId) !== String(userId)) return;
 
-          set({ messages: [...get().messages, newMessage] });
+          set((state) => ({ messages: [...state.messages, newMessage] }));
 
           get().getConversations();
         });
@@ -111,7 +122,8 @@ export const useChatStore = create(
             state.users.find((user) => user._id === activeConversationId) ||
             state.conversations.find((user) => user._id === activeConversationId) ||
             null,
-          messages: activeConversationId ? state.messages : [],
+          // clear old chat's messages right away so they don't flash in the new chat
+          messages: activeConversationId === state.activeConversationId ? state.messages : [],
         }));
       },
 

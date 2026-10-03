@@ -1,5 +1,6 @@
-import { getAuth } from "@clerk/express";
+import { clerkClient, getAuth } from "@clerk/express";
 import User from "../models/user.model.js";
+import { profileFromClerkUser, upsertUser } from "../lib/clerkSync.js";
 
 export async function protectRoute(req, res, next) {
   try {
@@ -7,26 +8,19 @@ export async function protectRoute(req, res, next) {
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-    const user = await User.findOne({
-        clerkId:userId
-    })
 
-    if(!user){
-        res.status(404).json({
-            message : "User profile is not synced yet"
-        })
-        return ;
+    let user = await User.findOne({ clerkId: userId });
+
+    // Not in MongoDB yet (webhook missed or not configured): fetch from Clerk and save now.
+    if (!user) {
+      const clerkUser = await clerkClient.users.getUser(userId);
+      user = await upsertUser(profileFromClerkUser(clerkUser));
     }
 
-    req.user = user
-
+    req.user = user;
     next();
-
-
   } catch (error) {
-    return res.status(503).json({
-        message : "Internal server error",
-        error : error
-    })
+    console.error("Error in protectRoute:", error.message);
+    return res.status(500).json({ message: "Internal server error" });
   }
 }

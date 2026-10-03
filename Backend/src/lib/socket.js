@@ -1,37 +1,47 @@
 import express from "express";
 import http from "http";
-import {Server} from "socket.io";
-
+import { Server } from "socket.io";
 
 const app = express();
 const server = http.createServer(app);
 
 const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
 
-const io  = new Server(server , {cors : {origin : [allowedOrigin]}});
+const io = new Server(server, { cors: { origin: [allowedOrigin] } });
 
-function getReceiverSocketId(userId){
-    return userSocketMap[userId];
+// userId -> Set of socket ids (one user can have several tabs/devices open)
+const userSocketMap = new Map();
+
+function getReceiverSocketIds(userId) {
+  return [...(userSocketMap.get(String(userId)) ?? [])];
 }
 
-const userSocketMap = {};
-
-io.on("connection" , (socket)=>{
-    const userId = socket.handshake.query.userId;
-
-   if (userId && userSocketMap[userId] === socket.id) {
-    delete userSocketMap[userId];
+function onlineUserIds() {
+  return [...userSocketMap.keys()];
 }
 
-    // io.emit() sends events to everyone 
-    io.emit("getOnlineUsers",Object.keys(userSocketMap))
+io.on("connection", (socket) => {
+  const userId = socket.handshake.query.userId;
 
-    //socket.on is used to listen for evenets
-    socket.on("disconnect" , ()=>{
-        if(userId) delete userSocketMap[userId];
-        io.emit("getOnlineUsers" , Object.keys(userSocketMap));
-        
-    })
-})
+  if (userId) {
+    const key = String(userId);
+    if (!userSocketMap.has(key)) userSocketMap.set(key, new Set());
+    userSocketMap.get(key).add(socket.id);
+  }
 
-export {app , server , io , getReceiverSocketId}
+  // io.emit() sends events to everyone
+  io.emit("getOnlineUsers", onlineUserIds());
+
+  socket.on("disconnect", () => {
+    if (userId) {
+      const key = String(userId);
+      const sockets = userSocketMap.get(key);
+      sockets?.delete(socket.id);
+      // only mark offline when their LAST tab/device is gone
+      if (sockets && sockets.size === 0) userSocketMap.delete(key);
+    }
+    io.emit("getOnlineUsers", onlineUserIds());
+  });
+});
+
+export { app, server, io, getReceiverSocketIds };

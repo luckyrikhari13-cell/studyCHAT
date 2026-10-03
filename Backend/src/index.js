@@ -14,7 +14,9 @@ import job from "./lib/cron.js";
 import { app, server } from "./lib/socket.js";
 
 const port = process.env.PORT || 3000;
-const FRONTEND_URL = process.env.FRONTEND_URL;
+// default to the Vite dev URL: with credentials:true the browser rejects a wildcard origin,
+// so an unset FRONTEND_URL would make every API call fail in development
+const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 const publicDir = path.join(process.cwd(), "public");
 
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));

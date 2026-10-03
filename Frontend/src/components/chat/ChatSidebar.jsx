@@ -27,8 +27,6 @@ function mapUserForList(user, onlineUsers) {
 
 function ChatSidebar() {
   const conversations = useChatStore((state) => state.conversations);
-
-  console.log(conversations);
   const users = useChatStore((state) => state.users);
 
   const searchQuery = useChatStore((state) => state.searchQuery);
@@ -38,6 +36,7 @@ function ChatSidebar() {
   const setSidebarTab = useChatStore((state) => state.setSidebarTab);
 
   const setActiveConversationId = useChatStore((state) => state.setActiveConversationId);
+  const getUsers = useChatStore((state) => state.getUsers);
 
   const onlineUsers = useAuthStore((state) => state.onlineUsers);
 
@@ -82,7 +81,11 @@ function ChatSidebar() {
 
       <Tabs
         selectedKey={sidebarTab}
-        onSelectionChange={(key) => setSidebarTab(String(key))}
+        onSelectionChange={(key) => {
+          setSidebarTab(String(key));
+          // always show a fresh list when opening the Users tab
+          if (String(key) === "users") getUsers();
+        }}
         variant="secondary"
         className="flex flex-1 flex-col overflow-y-auto"
       >
