@@ -1,5 +1,5 @@
 .env
-
+studyCHAT-interview-prompt.md
 logs
 *.log
 npm-debug.log*

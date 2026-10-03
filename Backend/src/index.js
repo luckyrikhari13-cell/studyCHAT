@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
 import fs from "fs";
 import path from "path";
 import cors from "cors";
@@ -12,7 +13,6 @@ import job from "./lib/cron.js";
 import messageRoutes from "./routes/message.route.js"
 import { app , server } from "./lib/socket.js";
 import { overwriteMiddlewareResult } from "mongoose";
-dotenv.config();
 const port = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 app.use(clerkMiddleware())
